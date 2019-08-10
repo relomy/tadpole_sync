@@ -19,15 +19,12 @@ class BabyTracker(object):
 
         # set up config directory
         dir_config = os.path.join(os.path.dirname(__file__), "config")
-
-        # self.config = json.load(open(os.path.join(dir_config, "config.json")))
         self.config = json.load(open("config/config.json"))
         assert set(self.config.keys()) == {"application_id"}
 
         # get baby_data from json and assert keys
         # TODO: load this from the baby tracker server
         # not sure what he's talking about
-        # self.baby_data = json.load(open(os.path.join(dir_config, "baby_data.json")))
         self.baby_data = json.load(open("config/baby_data.json"))
         assert set(self.baby_data.keys()) == {
             "dueDay",
@@ -44,19 +41,8 @@ class BabyTracker(object):
         # create session
         self.session = self.create_auth_session()
 
-        # get devices
-        # devices = self.get_devices()
-
-        # create transaction
-        # diaper = self.create_diaper_transaction("2019-08-07 23:56:15 +0000", "dirty")
-        # meal = self.create_bottle_transaction("2019-08-07 12:30:15 +0000", 4.5)
-
-        # if self.record_transaction(meal):
-        #     self.logger.info("transaction recorded successfully!")
-        # else:
-        #     self.logger.info("there was an error.")
-
-        # get_new_devices = self.get_devices()
+        # get devices - this is just mimicing what the iOS does. we don't use it.
+        devices = self.get_devices()
 
     def create_auth_session(self):
         session = requests.session()
@@ -91,7 +77,7 @@ class BabyTracker(object):
 
         # session.cookies.set_cookie(
         #     name="AWSELB",
-        #     value="357513371890ED1DC31DB07EE8E45D074428B62AC1ECF7522B204D5DAA3027CCF32C1A2501532543FF95A57A8DFB9929525C138EAE2AB9BE930826AA4125C18FAA38D51017",
+        #     value="",
         # )
 
         p = session.post(self.URL + "/session", headers=headers, data=json.dumps(new_device))
@@ -100,9 +86,9 @@ class BabyTracker(object):
 
         # c1 = requests.cookies.create_cookie(
         #     "AWSELB",
-        #     "357513371890ED1DC31DB07EE8E45D074428B62AC140814EEF36AA02F3C3BD0A5F43F3D504D878B55936D185CD18F661CE4D650C4198ACF86893DAB17C6AB6C401F88B2A80",
+        #     "",
         # )
-        # c2 = requests.cookies.create_cookie("PHPSESSID", "mebpart8pdaoc2bict8dmi7ut1")
+        # c2 = requests.cookies.create_cookie("PHPSESSID", "")
         # session.cookies.set_cookie(c1)
         # session.cookies.set_cookie(c2)
 
@@ -218,7 +204,7 @@ class BabyTracker(object):
         for device in devices:
             if device["DeviceUUID"] == self.config["application_id"]:
                 return device["LastSyncID"]
-        return 0
+        raise Exception("last_sync_id not found. I've had issues with returning 0 here.")
 
     def record_transaction(self, transaction):
         headers = {
@@ -230,22 +216,20 @@ class BabyTracker(object):
             "Connection": "keep-alive",
             "User-Agent": "BabyTrackerPro/36 CFNetwork/1098.1 Darwin/19.0.0",
         }
-        # self.logger.info(f"new_transaction: {new_transaction}")
         self.logger.debug(f"syncing transaction: {transaction}")
         data = self.generate_sync_data(transaction, self.last_sync_id() + 1)
-        # data = self.generate_sync_data(transaction, 1528)
 
         self.logger.info(f"Posting transaction")
         self.logger.debug(f"post data: {data}")
-        # post = self.session.post(self.URL + "/account/transaction", headers=headers, json=data)
+        post = self.session.post(self.URL + "/account/transaction", headers=headers, json=data)
 
-        # if post.status_code == 201:
-        #     self.logger.info(f"POST successful! status code: {post.status_code}")
-        #     return True
-        # else:
-        #     self.logger.info(f"POST error? status code: {post.status_code}")
-        #     self.logger.info(f"POST headers: {post.headers}")
-        #     return False
+        if post.status_code == 201:
+            self.logger.info(f"POST successful! status code: {post.status_code}")
+            return True
+
+        self.logger.info(f"POST error? status code: {post.status_code}")
+        self.logger.info(f"POST headers: {post.headers}")
+        return False
 
     def get_devices(self):
         headers = {
