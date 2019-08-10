@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -13,6 +14,8 @@ class BabyTracker(object):
     URL = "https://prodapp.babytrackers.com"
 
     def __init__(self):
+        # setup logging
+        self.logger = logger or logging.getLogger(__name__)
 
         # set up config directory
         dir_config = os.path.join(os.path.dirname(__file__), "config")
@@ -62,7 +65,7 @@ class BabyTracker(object):
             email = os.getenv("EMAIL")
             password = os.getenv("PASSWORD")
         except:
-            raise ("Make sure the .env file has EMAIL and PASSWORD set")
+            raise Exception("Make sure the .env file has EMAIL and PASSWORD set")
 
         new_device = {
             "Device": {
@@ -118,7 +121,7 @@ class BabyTracker(object):
             if tadpole_trans["type"] == "diaper":
                 note = f"Diaper changed by {actor}"
                 transaction = self.create_diaper_transaction(
-                    tadpole_trans["start_time"], tadpole_trans["classification"], note
+                    tadpole_trans["start_time"], tadpole_trans["diaper_type"], note
                 )
 
             elif tadpole_trans["type"] == "meal":
@@ -146,15 +149,6 @@ class BabyTracker(object):
         # "status": 1 - dirty
         # "status": 2 - mixed
         # "status": 0 + "amount": 0 - #dry
-        if "Wet" in diaper_type:
-            diaper_type = "wet"
-        elif "BM" in diaper_type:
-            diaper_type = "dirty"
-        elif "Dry" in diaper_type:
-            diaper_type = "dry"
-        else:
-            exit(f"Unsupported diaper type: {diaper_type}")
-
         diaper_status = {"wet": 0, "dry": 0, "dirty": 1, "mixed": 2}
 
         # default amount is 2, except for dry
