@@ -1,15 +1,17 @@
-* Create data files for your config and your baby. These should be json files names `config.json` and `baby_data.json` respectively. They should be formatted like
+Create .json files for your config and place them in the `config` directory.
+
+Example `config.json`
 ```
 {
-    "application_id": "String" # id of your Alexa App, or null
+    "application_id": "String" # randomly generated UUID
 }
 ```
-and
+Example `baby_data.json`
 ```
 {
     "dueDay": "YYYY-mm-dd HH:MM:SS +0000",
     "BCObjectType": "Baby",
-    "gender": "false", # true = boy?
+    "gender": "false", # true = boy
     "pictureName": "String",
     "dob": "YYYY-mm-dd HH:MM:SS +0000",
     "newFlage": "false", # ??
@@ -18,4 +20,9 @@ and
     "objectID": "String"
 }
 ```
-Please these files in the `config` directory.
+
+Please remember to have a `.env` file with your email and password as well.
+```
+EMAIL="example@example.com"
+PASSWORD="password123"
+```
