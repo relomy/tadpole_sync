@@ -1,0 +1,21 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+black = "*"
+pylint = "*"
+rope = "*"
+
+[packages]
+requests = "*"
+browsercookie = {hg = "https://bitbucket.org/richardpenman/browsercookie/"}
+pywin32 = {version = "*",sys_platform = "== 'win32'"}
+pytz = "*"
+
+[requires]
+python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
