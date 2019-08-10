@@ -1,8 +1,8 @@
 import base64
 import json
+import os
 import uuid
 from datetime import datetime
-import os
 
 import requests
 
@@ -14,17 +14,18 @@ class BabyTracker(object):
 
     def __init__(self):
 
+        # set up config directory
         dir_config = os.path.join(os.path.dirname(__file__), "config")
 
         # self.config = json.load(open(os.path.join(dir_config, "config.json")))
-        self.config = json.load(open("config\config.json"))
+        self.config = json.load(open("config/config.json"))
         assert set(self.config.keys()) == {"application_id"}
 
         # get baby_data from json and assert keys
         # TODO: load this from the baby tracker server
         # not sure what he's talking about
         # self.baby_data = json.load(open(os.path.join(dir_config, "baby_data.json")))
-        self.baby_data = json.load(open("config\baby_data.json"))
+        self.baby_data = json.load(open("config/baby_data.json"))
         assert set(self.baby_data.keys()) == {
             "dueDay",
             "BCObjectType",
