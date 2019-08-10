@@ -13,7 +13,7 @@ class BabyTracker(object):
 
     URL = "https://prodapp.babytrackers.com"
 
-    def __init__(self):
+    def __init__(self, logger=None):
         # setup logging
         self.logger = logger or logging.getLogger(__name__)
 
@@ -45,16 +45,16 @@ class BabyTracker(object):
         self.session = self.create_auth_session()
 
         # get devices
-        devices = self.get_devices()
+        # devices = self.get_devices()
 
         # create transaction
         # diaper = self.create_diaper_transaction("2019-08-07 23:56:15 +0000", "dirty")
         # meal = self.create_bottle_transaction("2019-08-07 12:30:15 +0000", 4.5)
 
         # if self.record_transaction(meal):
-        #     print("transaction recorded successfully!")
+        #     self.logger.info("transaction recorded successfully!")
         # else:
-        #     print("there was an error.")
+        #     self.logger.info("there was an error.")
 
         # get_new_devices = self.get_devices()
 
@@ -95,8 +95,8 @@ class BabyTracker(object):
         # )
 
         p = session.post(self.URL + "/session", headers=headers, data=json.dumps(new_device))
-        print(p.text)
-        print(session.cookies)
+        self.logger.info(p.text)
+        self.logger.info(session.cookies)
 
         # c1 = requests.cookies.create_cookie(
         #     "AWSELB",
@@ -111,7 +111,7 @@ class BabyTracker(object):
     def create_transactions(self, tadpole_dict):
         for tadpole_trans in sorted(tadpole_dict, key=lambda i: i["type"]):
             transaction = ""
-            print(tadpole_trans)
+            self.logger.info("Creating transaction [{}]".format(tadpole_dict["type"]))
 
             if tadpole_trans["actor"]:
                 actor = tadpole_trans["actor"]
@@ -134,7 +134,7 @@ class BabyTracker(object):
                 )
 
             elif tadpole_trans["type"] == "nap":
-                print(f"create_nap: {tadpole_trans}")
+                self.logger.info(f"create_nap: {tadpole_trans}")
                 note = f"Woke up at {tadpole_trans['end_time']}"
                 transaction = self.create_sleep_transaction(
                     tadpole_trans["start_time"], tadpole_trans["duration"], note
@@ -230,21 +230,22 @@ class BabyTracker(object):
             "Connection": "keep-alive",
             "User-Agent": "BabyTrackerPro/36 CFNetwork/1098.1 Darwin/19.0.0",
         }
-        # print(f"new_transaction: {new_transaction}")
-        print(f"syncing transaction: {transaction}")
+        # self.logger.info(f"new_transaction: {new_transaction}")
+        self.logger.debug(f"syncing transaction: {transaction}")
         data = self.generate_sync_data(transaction, self.last_sync_id() + 1)
         # data = self.generate_sync_data(transaction, 1528)
 
-        print(f"posting: {data}")
-        post = self.session.post(self.URL + "/account/transaction", headers=headers, json=data)
+        self.logger.info(f"Posting transaction")
+        self.logger.debug(f"post data: {data}")
+        # post = self.session.post(self.URL + "/account/transaction", headers=headers, json=data)
 
-        if post.status_code == 201:
-            print(f"POST successful! status code: {post.status_code}")
-            return True
-        else:
-            print(f"POST error? status code: {post.status_code}")
-            print(f"POST headers: {post.headers}")
-            return False
+        # if post.status_code == 201:
+        #     self.logger.info(f"POST successful! status code: {post.status_code}")
+        #     return True
+        # else:
+        #     self.logger.info(f"POST error? status code: {post.status_code}")
+        #     self.logger.info(f"POST headers: {post.headers}")
+        #     return False
 
     def get_devices(self):
         headers = {
@@ -284,7 +285,3 @@ class BabyTracker(object):
 
     def get_decoded_transaction_json(transaction):
         return json.loads(base64.b64decode(transaction).decode())
-
-
-if __name__ == "__main__":
-    tracker = BabyTracker()

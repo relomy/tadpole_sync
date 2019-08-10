@@ -67,8 +67,9 @@ def get_transactions(event):
             else:
                 raise Exception("No start_time found in entry")
 
+            logger.info(f"Found a {entry['type']} @ {start_time}")
+
             if entry["type"] == "bathroom":
-                logger.info(f"Found a diaper @ {start_time}")
                 # determine type of diaper to send to BabyTracker
                 if "Wet" in entry["classification"]:
                     diaper_type = "wet"
@@ -89,7 +90,6 @@ def get_transactions(event):
                 )
 
             elif entry["type"] == "food":
-                logger.info(f"Found a meal @ {start_time}")
                 quantity = entry["quantity"]
                 amount_offered = None
                 contents = None
@@ -111,7 +111,6 @@ def get_transactions(event):
                     }
                 )
             elif entry["type"] == "nap":
-                logger.info(f"Found a nap @ {start_time}")
                 # completed naps only - must have an end_time
                 if "end_time" in entry:
                     end_time = get_utc_date_string(entry["end_time"])

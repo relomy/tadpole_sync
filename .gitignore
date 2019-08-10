@@ -3,11 +3,8 @@
 # project-specific files
 *.vscode/
 .env
-baby_data.json
-config.json
+config/*.json
 Pipfile.lock
-*.html
-.remote-sync.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
