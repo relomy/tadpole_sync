@@ -67,7 +67,7 @@ def get_transactions(event):
             else:
                 raise Exception("No start_time found in entry")
 
-            logger.info(f"Found a {entry['type']} @ {start_time}")
+            logger.info(f"Found a {entry['type']} event @ {start_time}")
 
             if entry["type"] == "bathroom":
                 # determine type of diaper to send to BabyTracker
@@ -150,7 +150,7 @@ def main():
     else:
         raise Exception("There are no events in the response.")
 
-    my_date = "2019-08-09"
+    my_date = "2019-08-14"
     logger.info(f"Getting largest event for {my_date}")
     event = get_largest_event(events, my_date)
 

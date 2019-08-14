@@ -97,7 +97,7 @@ class BabyTracker(object):
     def create_transactions(self, tadpole_dict):
         for tadpole_trans in sorted(tadpole_dict, key=lambda i: i["type"]):
             transaction = ""
-            self.logger.info("Creating transaction [{}]".format(tadpole_dict["type"]))
+            self.logger.info("Creating transaction [{}]".format(tadpole_trans["type"]))
 
             if tadpole_trans["actor"]:
                 actor = tadpole_trans["actor"]
@@ -120,7 +120,6 @@ class BabyTracker(object):
                 )
 
             elif tadpole_trans["type"] == "nap":
-                self.logger.info(f"create_nap: {tadpole_trans}")
                 note = f"Woke up at {tadpole_trans['end_time']}"
                 transaction = self.create_sleep_transaction(
                     tadpole_trans["start_time"], tadpole_trans["duration"], note
@@ -224,11 +223,11 @@ class BabyTracker(object):
         post = self.session.post(self.URL + "/account/transaction", headers=headers, json=data)
 
         if post.status_code == 201:
-            self.logger.info(f"POST successful! status code: {post.status_code}")
+            self.logger.debug(f"POST successful! status code: {post.status_code}")
             return True
 
-        self.logger.info(f"POST error? status code: {post.status_code}")
-        self.logger.info(f"POST headers: {post.headers}")
+        self.logger.debug(f"POST error? status code: {post.status_code}")
+        self.logger.debug(f"POST headers: {post.headers}")
         return False
 
     def get_devices(self):
