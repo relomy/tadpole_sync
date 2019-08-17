@@ -1,3 +1,4 @@
+import argparse
 import logging
 import logging.config
 from datetime import datetime
@@ -133,7 +134,39 @@ def get_transactions(event):
     return transactions
 
 
+def valid_date(date_string):
+    """Check date argument to determine if it is a valid.
+
+    Arguments
+    ---------
+        date_string {string} -- date from argument
+
+    Returns
+    -------
+        {datetime.datetime} -- YYYY-MM-DD format
+
+    """
+    try:
+        return datetime.strptime(date_string, "%Y-%m-%d")
+    except ValueError:
+        msg = "Not a valid date: '{0}' - valid is YYYY-MM-DD.".format(date_string)
+        raise argparse.ArgumentTypeError(msg)
+
+
 def main():
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-d",
+        "--date",
+        help="Date (YYYY-MM-DD) to pull Tadpole events",
+        default=datetime.today(),
+        type=valid_date,
+    )
+    parser.add_argument(
+        "-f", "--force", help="Do not check BabyTrack events prior to syncing Tadpole events"
+    )
+
     logger.info("Getting events from https://www.tadpoles.com")
     logger.debug("Getting cookies from Firefox")
     # TODO - authenticate properly with requests?
@@ -150,7 +183,7 @@ def main():
     else:
         raise Exception("There are no events in the response.")
 
-    my_date = "2019-08-14"
+    my_date = "2019-08-16"
     logger.info(f"Getting largest event for {my_date}")
     event = get_largest_event(events, my_date)
 
@@ -160,12 +193,13 @@ def main():
     logger.info(f"Getting transactions for event (date: {event['event_date']})")
     transactions = get_transactions(event)
 
-    # TODO
-    # create baby tracker events
-    # check if baby tracker events exist
-    logger.info("Creating transactions in BabyTracker")
+    # get last transactions from babytracker
     tracker = BabyTracker()
-    tracker.create_transactions(transactions)
+    bt_trans = tracker.get_last_transactions()
+
+    # TODO compare BabyTracker/Tadpole events
+    logger.info("Creating transactions in BabyTracker")
+    # tracker.create_transactions(transactions)
 
 
 if __name__ == "__main__":

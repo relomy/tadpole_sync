@@ -242,7 +242,7 @@ class BabyTracker(object):
         r = self.session.get(self.URL + "/account/device", headers=headers)
         return r.json()
 
-    def get_last_transaction_for_device(self, device, last_sync=None):
+    def get_transactions_for_device(self, device, count=None):
         headers = {
             "Accept": "*/*",
             "Accept-Encoding": "br, gzip, deflate",
@@ -251,20 +251,40 @@ class BabyTracker(object):
             "Connection": "keep-alive",
             "User-Agent": "BabyTrackerPro/36 CFNetwork/1098.1 Darwin/19.0.0",
         }
-        if not last_sync:
+        if not count:
             last_sync = int(device["LastSyncID"]) - 1
+        else:
+            last_sync = int(device["LastSyncID"]) - count
 
         # URL2 = "https://prodapp.babytrackers.com/account/transaction/B2D6EA52-D800-4C04-963B-7FF4A7B0A37A/1412"
         r = self.session.get(
             self.URL + f"/account/transaction/{device['DeviceUUID']}/{last_sync}", headers=headers
         )
 
-        last_transaction = r.json()
+        transactions = r.json()
 
-        if len(last_transaction) == 1:
-            return last_transaction[0]
+        if len(transactions) >= 1:
+            return transactions
 
         return None
 
-    def get_decoded_transaction_json(transaction):
+    def get_last_transactions(self):
+        devices = self.get_devices()
+
+        # loop through devices and get transactions for each
+        count = 10
+        all_transactions = []
+        for device in devices:
+            transactions = self.get_transactions_for_device(device, count)
+
+            for transaction in transactions:
+                if transaction["OPCode"] != 2:
+                    decoded_transaction = self.get_decoded_transaction_json(
+                        transaction["Transaction"]
+                    )
+                    all_transactions.append(decoded_transaction)
+
+        return all_transactions
+
+    def get_decoded_transaction_json(self, transaction):
         return json.loads(base64.b64decode(transaction).decode())
