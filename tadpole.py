@@ -35,7 +35,9 @@ def get_largest_event(events, target_date):
 
 def get_utc_date_string(timestamp):
     return (
-        datetime.fromtimestamp(timestamp).astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S +0000")
+        datetime.fromtimestamp(timestamp)
+        .astimezone(pytz.utc)
+        .strftime("%Y-%m-%d %H:%M:%S +0000")
     )
 
 
@@ -79,7 +81,9 @@ def get_transactions(event):
                 elif "Dry" in entry["classification"]:
                     diaper_type = "dry"
                 else:
-                    raise Exception(f"Unsupported diaper type: {entry['classification']}")
+                    raise Exception(
+                        f"Unsupported diaper type: {entry['classification']}"
+                    )
 
                 transactions.append(
                     {
@@ -117,7 +121,9 @@ def get_transactions(event):
                     end_time = get_utc_date_string(entry["end_time"])
 
                     # calculate duration
-                    duration = calculate_duration(entry["start_time"], entry["end_time"])
+                    duration = calculate_duration(
+                        entry["start_time"], entry["end_time"]
+                    )
 
                     transactions.append(
                         {
@@ -165,7 +171,9 @@ def main():
         type=valid_date,
     )
     parser.add_argument(
-        "-f", "--force", help="Do not check BabyTrack events prior to syncing Tadpole events"
+        "-f",
+        "--force",
+        help="Do not check BabyTrack events prior to syncing Tadpole events",
     )
     args = parser.parse_args()
 

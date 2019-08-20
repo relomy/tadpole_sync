@@ -80,7 +80,9 @@ class BabyTracker(object):
         #     value="",
         # )
 
-        p = session.post(self.URL + "/session", headers=headers, data=json.dumps(new_device))
+        p = session.post(
+            self.URL + "/session", headers=headers, data=json.dumps(new_device)
+        )
         self.logger.info(p.text)
         self.logger.info(session.cookies)
 
@@ -116,7 +118,9 @@ class BabyTracker(object):
 
             elif tadpole_trans["type"] == "meal":
                 if tadpole_trans["amount_offered"]:
-                    note = f"Fed by {actor} (offered {tadpole_trans['amount_offered']}oz)"
+                    note = (
+                        f"Fed by {actor} (offered {tadpole_trans['amount_offered']}oz)"
+                    )
                 else:
                     note = f"Fed by {actor}"
                 transaction = self.create_bottle_transaction(
@@ -167,7 +171,11 @@ class BabyTracker(object):
 
     def create_bottle_transaction(self, timestamp, amount, note="auto-created"):
         return {
-            "amount": {"value": amount, "englishMeasure": "true", "BCObjectType": "VolumeMeasure"},
+            "amount": {
+                "value": amount,
+                "englishMeasure": "true",
+                "BCObjectType": "VolumeMeasure",
+            },
             "BCObjectType": "Pumped",
             "note": note,
             "time": timestamp,
@@ -208,7 +216,9 @@ class BabyTracker(object):
         for device in devices:
             if device["DeviceUUID"] == self.config["application_id"]:
                 return device["LastSyncID"]
-        raise Exception("last_sync_id not found. I've had issues with returning 0 here.")
+        raise Exception(
+            "last_sync_id not found. I've had issues with returning 0 here."
+        )
 
     def record_transaction(self, transaction):
         headers = {
@@ -225,7 +235,9 @@ class BabyTracker(object):
 
         self.logger.info(f"Posting transaction")
         self.logger.debug(f"post data: {data}")
-        post = self.session.post(self.URL + "/account/transaction", headers=headers, json=data)
+        post = self.session.post(
+            self.URL + "/account/transaction", headers=headers, json=data
+        )
 
         if post.status_code == 201:
             self.logger.debug(f"POST successful! status code: {post.status_code}")
@@ -247,7 +259,7 @@ class BabyTracker(object):
         r = self.session.get(self.URL + "/account/device", headers=headers)
         return r.json()
 
-    def get_transactions_for_device(self, device, count=None):
+    def get_transactions_for_device(self, device, count=1):
         headers = {
             "Accept": "*/*",
             "Accept-Encoding": "br, gzip, deflate",
@@ -256,14 +268,13 @@ class BabyTracker(object):
             "Connection": "keep-alive",
             "User-Agent": "BabyTrackerPro/36 CFNetwork/1098.1 Darwin/19.0.0",
         }
-        if not count:
-            last_sync = int(device["LastSyncID"]) - 1
-        else:
-            last_sync = int(device["LastSyncID"]) - count
 
         # URL2 = "https://prodapp.babytrackers.com/account/transaction/B2D6EA52-D800-4C04-963B-7FF4A7B0A37A/1412"
+        # this GET returns a list of transactions since `last_sync`
+        last_sync = int(device["LastSyncID"]) - count
         r = self.session.get(
-            self.URL + f"/account/transaction/{device['DeviceUUID']}/{last_sync}", headers=headers
+            self.URL + f"/account/transaction/{device['DeviceUUID']}/{last_sync}",
+            headers=headers,
         )
 
         transactions = r.json()
