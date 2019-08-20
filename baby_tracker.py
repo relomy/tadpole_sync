@@ -97,7 +97,11 @@ class BabyTracker(object):
     def create_transactions(self, tadpole_dict):
         for tadpole_trans in sorted(tadpole_dict, key=lambda i: i["type"]):
             transaction = ""
-            self.logger.info("Creating transaction [{}]".format(tadpole_trans["type"]))
+            self.logger.info(
+                "Creating transaction [{} - {}]".format(
+                    tadpole_trans["type"], tadpole_trans["start_time"]
+                )
+            )
 
             if tadpole_trans["actor"]:
                 actor = tadpole_trans["actor"]
@@ -126,6 +130,7 @@ class BabyTracker(object):
                 )
 
             self.record_transaction(transaction)
+            # this is to mimic the application
             devices = self.get_devices()
 
     def create_diaper_transaction(self, timestamp, diaper_type, note="auto-created"):

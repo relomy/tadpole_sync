@@ -159,6 +159,7 @@ def main():
     parser.add_argument(
         "-d",
         "--date",
+        required=True,
         help="Date (YYYY-MM-DD) to pull Tadpole events",
         default=datetime.today(),
         type=valid_date,
@@ -166,6 +167,7 @@ def main():
     parser.add_argument(
         "-f", "--force", help="Do not check BabyTrack events prior to syncing Tadpole events"
     )
+    args = parser.parse_args()
 
     logger.info("Getting events from https://www.tadpoles.com")
     logger.debug("Getting cookies from Firefox")
@@ -183,7 +185,8 @@ def main():
     else:
         raise Exception("There are no events in the response.")
 
-    my_date = "2019-08-16"
+    # use date from argument
+    my_date = f"{args.date:%Y-%m-%d}"
     logger.info(f"Getting largest event for {my_date}")
     event = get_largest_event(events, my_date)
 
