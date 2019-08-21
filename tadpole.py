@@ -222,6 +222,7 @@ def main():
     print("tracker_events count: {}".format(len(tracker_events)))
 
     # compare babytracker/tadpole and remove transactions that already exist
+    logger.info("Comparing transactions from Tadpole and events from BabyTracker")
     transactions = [
         t for t in transactions if not transaction_already_exists(t, tracker_events)
     ]

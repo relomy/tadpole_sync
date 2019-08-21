@@ -93,6 +93,8 @@ class BabyTracker(object):
         # c2 = requests.cookies.create_cookie("PHPSESSID", "")
         # session.cookies.set_cookie(c1)
         # session.cookies.set_cookie(c2)
+        if p.status_code != 200:
+            raise Exception("Authentication failed")
 
         return session
 
