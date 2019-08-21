@@ -284,13 +284,17 @@ class BabyTracker(object):
 
         return None
 
-    def get_last_transactions(self):
+    def get_last_transactions_decoded(self):
         devices = self.get_devices()
 
         # loop through devices and get transactions for each
         count = 10
         all_transactions = []
         for device in devices:
+            # check for twice as many for the python script device
+            if device["DeviceUUID"] == self.config["application_id"]:
+                count *= 2
+
             transactions = self.get_transactions_for_device(device, count)
 
             for transaction in transactions:
@@ -298,7 +302,18 @@ class BabyTracker(object):
                     decoded_transaction = self.get_decoded_transaction_json(
                         transaction["Transaction"]
                     )
-                    all_transactions.append(decoded_transaction)
+
+                    # ignore pumps
+                    if decoded_transaction["BCObjectType"] == "Pump":
+                        continue
+
+                    # get event_type based on BCObjectType
+                    event_types = {"Pumped": "meal", "Diaper": "diaper", "Sleep": "nap"}
+                    event_type = event_types[decoded_transaction["BCObjectType"]]
+
+                    all_transactions.append(
+                        {"type": event_type, "start_time": decoded_transaction["time"]}
+                    )
 
         return all_transactions
 

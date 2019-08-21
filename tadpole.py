@@ -140,6 +140,17 @@ def get_transactions(event):
     return transactions
 
 
+def transaction_already_exists(transaction, tracker_events):
+    for event in tracker_events:
+        # if type and start_time match, transaction already exists
+        if (
+            transaction["type"] == event["type"]
+            and transaction["start_time"] == event["start_time"]
+        ):
+            print(f"{transaction['type']} : {event['start_time']} matches, return true")
+            return True
+
+
 def valid_date(date_string):
     """Check date argument to determine if it is a valid.
 
@@ -206,11 +217,18 @@ def main():
 
     # get last transactions from babytracker
     tracker = BabyTracker()
-    bt_trans = tracker.get_last_transactions()
+    tracker_events = tracker.get_last_transactions_decoded()
 
-    # TODO compare BabyTracker/Tadpole events
-    logger.info("Creating transactions in BabyTracker")
-    # tracker.create_transactions(transactions)
+    print("tracker_events count: {}".format(len(tracker_events)))
+
+    # compare babytracker/tadpole and remove transactions that already exist
+    transactions = [
+        t for t in transactions if not transaction_already_exists(t, tracker_events)
+    ]
+
+    if transactions:
+        logger.info("Creating transactions in BabyTracker")
+        tracker.create_transactions(transactions)
 
 
 if __name__ == "__main__":
