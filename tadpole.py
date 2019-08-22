@@ -46,6 +46,56 @@ def calculate_duration(start_time, end_time):
     return int(delta.seconds / 60)
 
 
+def parse_event_entry(entry, actor, start_time):
+    entry_types = {"bathroom": "diaper", "food": "meal", "nap": "nap"}
+
+    t = {"type": entry_types[entry["type"]], "actor": actor, "start_time": start_time}
+
+    if entry["type"] == "bathroom":
+        # determine type of diaper to send to BabyTracker
+        classification = entry["classification"]
+        if "Wet" in classification:
+            diaper_type = "wet"
+        elif "BM" in classification:
+            diaper_type = "dirty"
+        elif "Dry" in classification:
+            diaper_type = "dry"
+        else:
+            raise Exception(f"Unsupported diaper type: {classification}")
+
+        t["diaper_type"] = diaper_type
+
+    elif entry["type"] == "food":
+        quantity = entry["quantity"]
+        amount_offered = None
+        contents = None
+
+        if "amount_offered" in entry:
+            amount_offered = entry["amount_offered"]
+
+        if "contents" in entry:
+            contents = entry["contents"]
+
+        t["quantity"] = quantity
+        t["amount_offered"] = amount_offered
+        t["contents"] = contents
+
+    elif entry["type"] == "nap":
+        # completed naps only - must have an end_time
+        if "end_time" not in entry:
+            return None
+
+        end_time = get_utc_date_string(entry["end_time"])
+
+        # calculate duration
+        duration = calculate_duration(entry["start_time"], entry["end_time"])
+
+        t["end_time"] = end_time
+        t["duration"] = duration
+
+    return t
+
+
 def get_transactions(event):
     transactions = []
     if "entries" in event:
@@ -72,68 +122,11 @@ def get_transactions(event):
 
             logger.info(f"Found a {entry['type']} event @ {start_time}")
 
-            if entry["type"] == "bathroom":
-                # determine type of diaper to send to BabyTracker
-                if "Wet" in entry["classification"]:
-                    diaper_type = "wet"
-                elif "BM" in entry["classification"]:
-                    diaper_type = "dirty"
-                elif "Dry" in entry["classification"]:
-                    diaper_type = "dry"
-                else:
-                    raise Exception(
-                        f"Unsupported diaper type: {entry['classification']}"
-                    )
+            event_entry = parse_event_entry(entry, actor, start_time)
 
-                transactions.append(
-                    {
-                        "type": "diaper",
-                        "actor": actor,
-                        "start_time": start_time,
-                        "diaper_type": diaper_type,
-                    }
-                )
+            if event_entry:
+                transactions.append(event_entry)
 
-            elif entry["type"] == "food":
-                quantity = entry["quantity"]
-                amount_offered = None
-                contents = None
-
-                if "amount_offered" in entry:
-                    amount_offered = entry["amount_offered"]
-
-                if "contents" in entry:
-                    contents = entry["contents"]
-
-                transactions.append(
-                    {
-                        "type": "meal",
-                        "actor": actor,
-                        "start_time": start_time,
-                        "quantity": quantity,
-                        "amount_offered": amount_offered,
-                        "contents": contents,
-                    }
-                )
-            elif entry["type"] == "nap":
-                # completed naps only - must have an end_time
-                if "end_time" in entry:
-                    end_time = get_utc_date_string(entry["end_time"])
-
-                    # calculate duration
-                    duration = calculate_duration(
-                        entry["start_time"], entry["end_time"]
-                    )
-
-                    transactions.append(
-                        {
-                            "type": "nap",
-                            "actor": actor,
-                            "start_time": start_time,
-                            "end_time": end_time,
-                            "duration": duration,
-                        }
-                    )
     else:
         raise Exception("No entries found in largest_event")
 

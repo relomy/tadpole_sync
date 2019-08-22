@@ -286,11 +286,10 @@ class BabyTracker(object):
 
         return None
 
-    def get_last_transactions_decoded(self):
+    def get_last_transactions_decoded(self, count=10):
         devices = self.get_devices()
 
         # loop through devices and get transactions for each
-        count = 10
         all_transactions = []
         for device in devices:
             # check for twice as many for the python script device
@@ -301,7 +300,7 @@ class BabyTracker(object):
 
             for transaction in transactions:
                 if transaction["OPCode"] != 2:
-                    decoded_transaction = self.get_decoded_transaction_json(
+                    decoded_transaction = self.decode_transaction(
                         transaction["Transaction"]
                     )
 
@@ -319,5 +318,5 @@ class BabyTracker(object):
 
         return all_transactions
 
-    def get_decoded_transaction_json(self, transaction):
+    def decode_transaction(self, transaction):
         return json.loads(base64.b64decode(transaction).decode())
