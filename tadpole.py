@@ -101,8 +101,8 @@ def get_transactions(event):
     if "entries" in event:
         # loop through each entry
         for entry in event["entries"]:
-            # skip notes
-            if entry["type"] == "note":
+            # skip notes and "activity" - picture?
+            if entry["type"] == "note" or entry["type"] == "activity":
                 continue
 
             # set actor (used for BabyTracker note) based on entry fields, if there is one
