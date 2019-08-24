@@ -80,7 +80,9 @@ class BabyTracker(object):
         #     value="",
         # )
 
-        p = session.post(self.URL + "/session", headers=headers, data=json.dumps(new_device))
+        p = session.post(
+            self.URL + "/session", headers=headers, data=json.dumps(new_device)
+        )
         self.logger.info(p.text)
         self.logger.info(session.cookies)
 
@@ -91,13 +93,19 @@ class BabyTracker(object):
         # c2 = requests.cookies.create_cookie("PHPSESSID", "")
         # session.cookies.set_cookie(c1)
         # session.cookies.set_cookie(c2)
+        if p.status_code != 200:
+            raise Exception("Authentication failed")
 
         return session
 
     def create_transactions(self, tadpole_dict):
         for tadpole_trans in sorted(tadpole_dict, key=lambda i: i["type"]):
             transaction = ""
-            self.logger.info("Creating transaction [{}]".format(tadpole_trans["type"]))
+            self.logger.info(
+                "Creating transaction [{} - {}]".format(
+                    tadpole_trans["type"], tadpole_trans["start_time"]
+                )
+            )
 
             if tadpole_trans["actor"]:
                 actor = tadpole_trans["actor"]
@@ -112,7 +120,9 @@ class BabyTracker(object):
 
             elif tadpole_trans["type"] == "meal":
                 if tadpole_trans["amount_offered"]:
-                    note = f"Fed by {actor} (offered {tadpole_trans['amount_offered']}oz)"
+                    note = (
+                        f"Fed by {actor} (offered {tadpole_trans['amount_offered']}oz)"
+                    )
                 else:
                     note = f"Fed by {actor}"
                 transaction = self.create_bottle_transaction(
@@ -126,6 +136,7 @@ class BabyTracker(object):
                 )
 
             self.record_transaction(transaction)
+            # this is to mimic the application
             devices = self.get_devices()
 
     def create_diaper_transaction(self, timestamp, diaper_type, note="auto-created"):
@@ -162,7 +173,11 @@ class BabyTracker(object):
 
     def create_bottle_transaction(self, timestamp, amount, note="auto-created"):
         return {
-            "amount": {"value": amount, "englishMeasure": "true", "BCObjectType": "VolumeMeasure"},
+            "amount": {
+                "value": amount,
+                "englishMeasure": "true",
+                "BCObjectType": "VolumeMeasure",
+            },
             "BCObjectType": "Pumped",
             "note": note,
             "time": timestamp,
@@ -203,7 +218,9 @@ class BabyTracker(object):
         for device in devices:
             if device["DeviceUUID"] == self.config["application_id"]:
                 return device["LastSyncID"]
-        raise Exception("last_sync_id not found. I've had issues with returning 0 here.")
+        raise Exception(
+            "last_sync_id not found. I've had issues with returning 0 here."
+        )
 
     def record_transaction(self, transaction):
         headers = {
@@ -220,7 +237,9 @@ class BabyTracker(object):
 
         self.logger.info(f"Posting transaction")
         self.logger.debug(f"post data: {data}")
-        post = self.session.post(self.URL + "/account/transaction", headers=headers, json=data)
+        post = self.session.post(
+            self.URL + "/account/transaction", headers=headers, json=data
+        )
 
         if post.status_code == 201:
             self.logger.debug(f"POST successful! status code: {post.status_code}")
@@ -242,7 +261,7 @@ class BabyTracker(object):
         r = self.session.get(self.URL + "/account/device", headers=headers)
         return r.json()
 
-    def get_last_transaction_for_device(self, device, last_sync=None):
+    def get_transactions_for_device(self, device, count=1):
         headers = {
             "Accept": "*/*",
             "Accept-Encoding": "br, gzip, deflate",
@@ -251,20 +270,53 @@ class BabyTracker(object):
             "Connection": "keep-alive",
             "User-Agent": "BabyTrackerPro/36 CFNetwork/1098.1 Darwin/19.0.0",
         }
-        if not last_sync:
-            last_sync = int(device["LastSyncID"]) - 1
 
         # URL2 = "https://prodapp.babytrackers.com/account/transaction/B2D6EA52-D800-4C04-963B-7FF4A7B0A37A/1412"
+        # this GET returns a list of transactions since `last_sync`
+        last_sync = int(device["LastSyncID"]) - count
         r = self.session.get(
-            self.URL + f"/account/transaction/{device['DeviceUUID']}/{last_sync}", headers=headers
+            self.URL + f"/account/transaction/{device['DeviceUUID']}/{last_sync}",
+            headers=headers,
         )
 
-        last_transaction = r.json()
+        transactions = r.json()
 
-        if len(last_transaction) == 1:
-            return last_transaction[0]
+        if len(transactions) >= 1:
+            return transactions
 
         return None
 
-    def get_decoded_transaction_json(transaction):
+    def get_last_transactions_decoded(self, count=10):
+        devices = self.get_devices()
+
+        # loop through devices and get transactions for each
+        all_transactions = []
+        for device in devices:
+            # check for twice as many for the python script device
+            if device["DeviceUUID"] == self.config["application_id"]:
+                count *= 2
+
+            transactions = self.get_transactions_for_device(device, count)
+
+            for transaction in transactions:
+                if transaction["OPCode"] != 2:
+                    decoded_transaction = self.decode_transaction(
+                        transaction["Transaction"]
+                    )
+
+                    # ignore pumps
+                    if decoded_transaction["BCObjectType"] == "Pump":
+                        continue
+
+                    # get event_type based on BCObjectType
+                    event_types = {"Pumped": "meal", "Diaper": "diaper", "Sleep": "nap"}
+                    event_type = event_types[decoded_transaction["BCObjectType"]]
+
+                    all_transactions.append(
+                        {"type": event_type, "start_time": decoded_transaction["time"]}
+                    )
+
+        return all_transactions
+
+    def decode_transaction(self, transaction):
         return json.loads(base64.b64decode(transaction).decode())

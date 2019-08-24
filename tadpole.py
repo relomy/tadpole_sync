@@ -1,3 +1,4 @@
+import argparse
 import logging
 import logging.config
 from datetime import datetime
@@ -34,7 +35,9 @@ def get_largest_event(events, target_date):
 
 def get_utc_date_string(timestamp):
     return (
-        datetime.fromtimestamp(timestamp).astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S +0000")
+        datetime.fromtimestamp(timestamp)
+        .astimezone(pytz.utc)
+        .strftime("%Y-%m-%d %H:%M:%S +0000")
     )
 
 
@@ -43,13 +46,63 @@ def calculate_duration(start_time, end_time):
     return int(delta.seconds / 60)
 
 
+def parse_event_entry(entry, actor, start_time):
+    entry_types = {"bathroom": "diaper", "food": "meal", "nap": "nap"}
+
+    t = {"type": entry_types[entry["type"]], "actor": actor, "start_time": start_time}
+
+    if entry["type"] == "bathroom":
+        # determine type of diaper to send to BabyTracker
+        classification = entry["classification"]
+        if "Wet" in classification:
+            diaper_type = "wet"
+        elif "BM" in classification:
+            diaper_type = "dirty"
+        elif "Dry" in classification:
+            diaper_type = "dry"
+        else:
+            raise Exception(f"Unsupported diaper type: {classification}")
+
+        t["diaper_type"] = diaper_type
+
+    elif entry["type"] == "food":
+        quantity = entry["quantity"]
+        amount_offered = None
+        contents = None
+
+        if "amount_offered" in entry:
+            amount_offered = entry["amount_offered"]
+
+        if "contents" in entry:
+            contents = entry["contents"]
+
+        t["quantity"] = quantity
+        t["amount_offered"] = amount_offered
+        t["contents"] = contents
+
+    elif entry["type"] == "nap":
+        # completed naps only - must have an end_time
+        if "end_time" not in entry:
+            return None
+
+        end_time = get_utc_date_string(entry["end_time"])
+
+        # calculate duration
+        duration = calculate_duration(entry["start_time"], entry["end_time"])
+
+        t["end_time"] = end_time
+        t["duration"] = duration
+
+    return t
+
+
 def get_transactions(event):
     transactions = []
     if "entries" in event:
         # loop through each entry
         for entry in event["entries"]:
-            # skip notes
-            if entry["type"] == "note":
+            # skip notes and "activity" - picture?
+            if entry["type"] == "note" or entry["type"] == "activity":
                 continue
 
             # set actor (used for BabyTracker note) based on entry fields, if there is one
@@ -69,71 +122,65 @@ def get_transactions(event):
 
             logger.info(f"Found a {entry['type']} event @ {start_time}")
 
-            if entry["type"] == "bathroom":
-                # determine type of diaper to send to BabyTracker
-                if "Wet" in entry["classification"]:
-                    diaper_type = "wet"
-                elif "BM" in entry["classification"]:
-                    diaper_type = "dirty"
-                elif "Dry" in entry["classification"]:
-                    diaper_type = "dry"
-                else:
-                    raise Exception(f"Unsupported diaper type: {entry['classification']}")
+            event_entry = parse_event_entry(entry, actor, start_time)
 
-                transactions.append(
-                    {
-                        "type": "diaper",
-                        "actor": actor,
-                        "start_time": start_time,
-                        "diaper_type": diaper_type,
-                    }
-                )
+            if event_entry:
+                transactions.append(event_entry)
 
-            elif entry["type"] == "food":
-                quantity = entry["quantity"]
-                amount_offered = None
-                contents = None
-
-                if "amount_offered" in entry:
-                    amount_offered = entry["amount_offered"]
-
-                if "contents" in entry:
-                    contents = entry["contents"]
-
-                transactions.append(
-                    {
-                        "type": "meal",
-                        "actor": actor,
-                        "start_time": start_time,
-                        "quantity": quantity,
-                        "amount_offered": amount_offered,
-                        "contents": contents,
-                    }
-                )
-            elif entry["type"] == "nap":
-                # completed naps only - must have an end_time
-                if "end_time" in entry:
-                    end_time = get_utc_date_string(entry["end_time"])
-
-                    # calculate duration
-                    duration = calculate_duration(entry["start_time"], entry["end_time"])
-
-                    transactions.append(
-                        {
-                            "type": "nap",
-                            "actor": actor,
-                            "start_time": start_time,
-                            "end_time": end_time,
-                            "duration": duration,
-                        }
-                    )
     else:
         raise Exception("No entries found in largest_event")
 
     return transactions
 
 
+def transaction_already_exists(transaction, tracker_events):
+    for event in tracker_events:
+        # if type and start_time match, transaction already exists
+        if (
+            transaction["type"] == event["type"]
+            and transaction["start_time"] == event["start_time"]
+        ):
+            print(f"{transaction['type']} : {event['start_time']} matches, return true")
+            return True
+
+
+def valid_date(date_string):
+    """Check date argument to determine if it is a valid.
+
+    Arguments
+    ---------
+        date_string {string} -- date from argument
+
+    Returns
+    -------
+        {datetime.datetime} -- YYYY-MM-DD format
+
+    """
+    try:
+        return datetime.strptime(date_string, "%Y-%m-%d")
+    except ValueError:
+        msg = "Not a valid date: '{0}' - valid is YYYY-MM-DD.".format(date_string)
+        raise argparse.ArgumentTypeError(msg)
+
+
 def main():
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-d",
+        "--date",
+        required=True,
+        help="Date (YYYY-MM-DD) to pull Tadpole events",
+        default=datetime.today(),
+        type=valid_date,
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        help="Do not check BabyTrack events prior to syncing Tadpole events",
+    )
+    args = parser.parse_args()
+
     logger.info("Getting events from https://www.tadpoles.com")
     logger.debug("Getting cookies from Firefox")
     # TODO - authenticate properly with requests?
@@ -150,7 +197,8 @@ def main():
     else:
         raise Exception("There are no events in the response.")
 
-    my_date = "2019-08-14"
+    # use date from argument
+    my_date = f"{args.date:%Y-%m-%d}"
     logger.info(f"Getting largest event for {my_date}")
     event = get_largest_event(events, my_date)
 
@@ -160,12 +208,21 @@ def main():
     logger.info(f"Getting transactions for event (date: {event['event_date']})")
     transactions = get_transactions(event)
 
-    # TODO
-    # create baby tracker events
-    # check if baby tracker events exist
-    logger.info("Creating transactions in BabyTracker")
+    # get last transactions from babytracker
     tracker = BabyTracker()
-    tracker.create_transactions(transactions)
+    tracker_events = tracker.get_last_transactions_decoded()
+
+    print("tracker_events count: {}".format(len(tracker_events)))
+
+    # compare babytracker/tadpole and remove transactions that already exist
+    logger.info("Comparing transactions from Tadpole and events from BabyTracker")
+    transactions = [
+        t for t in transactions if not transaction_already_exists(t, tracker_events)
+    ]
+
+    if transactions:
+        logger.info("Creating transactions in BabyTracker")
+        tracker.create_transactions(transactions)
 
 
 if __name__ == "__main__":
