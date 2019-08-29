@@ -304,17 +304,27 @@ class BabyTracker(object):
                         transaction["Transaction"]
                     )
 
-                    # ignore pumps
-                    if decoded_transaction["BCObjectType"] == "Pump":
-                        continue
+                    try:
+                        # ignore pumps
+                        if decoded_transaction["BCObjectType"] == "Pump":
+                            continue
 
-                    # get event_type based on BCObjectType
-                    event_types = {"Pumped": "meal", "Diaper": "diaper", "Sleep": "nap"}
-                    event_type = event_types[decoded_transaction["BCObjectType"]]
+                        # get event_type based on BCObjectType
+                        event_types = {
+                            "Pumped": "meal",
+                            "Diaper": "diaper",
+                            "Sleep": "nap",
+                        }
+                        event_type = event_types[decoded_transaction["BCObjectType"]]
 
-                    all_transactions.append(
-                        {"type": event_type, "start_time": decoded_transaction["time"]}
-                    )
+                        all_transactions.append(
+                            {
+                                "type": event_type,
+                                "start_time": decoded_transaction["time"],
+                            }
+                        )
+                    except KeyError as e:
+                        self.logger.info(f"The event_type {e} is not supported!")
 
         return all_transactions
 
