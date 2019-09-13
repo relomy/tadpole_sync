@@ -185,7 +185,7 @@ def main():
     logger.debug("Getting cookies from Firefox")
     # TODO - authenticate properly with requests?
     cookies = browsercookie.firefox()
-    url = "https://www.tadpoles.com/remote/v1/events?direction=range&earliest_event_time=1564632000&latest_event_time=1567310400&num_events=300&client=dashboard.com/parents"
+    url = "https://www.tadpoles.com/remote/v1/events?direction=range&earliest_event_time=1567296000&latest_event_time=1569974399&num_events=300&client=dashboard.com/parents"
 
     logger.debug(f"Perform GET request. URL: {url}")
     r = requests.get(url, cookies=cookies)
@@ -202,7 +202,7 @@ def main():
     logger.info(f"Getting largest event for {my_date}")
     event = get_largest_event(events, my_date)
 
-    if event == None:
+    if not event:
         raise Exception("Event is empty.")
 
     logger.info(f"Getting transactions for event (date: {event['event_date']})")
