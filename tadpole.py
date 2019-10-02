@@ -1,7 +1,7 @@
 import argparse
 import logging
 import logging.config
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import browsercookie
 import pytz
@@ -140,7 +140,9 @@ def transaction_already_exists(transaction, tracker_events):
             transaction["type"] == event["type"]
             and transaction["start_time"] == event["start_time"]
         ):
-            print(f"{transaction['type']} : {event['start_time']} matches, return true")
+            logger.info(
+                f"{transaction['type']} : {event['start_time']} matches, return true"
+            )
             return True
 
 
@@ -185,7 +187,12 @@ def main():
     logger.debug("Getting cookies from Firefox")
     # TODO - authenticate properly with requests?
     cookies = browsercookie.firefox()
-    url = "https://www.tadpoles.com/remote/v1/events?direction=range&earliest_event_time=1567296000&latest_event_time=1569974399&num_events=300&client=dashboard.com/parents"
+    today = datetime.today()
+    week_ahead = today + timedelta(days=7)
+    week_ago = today - timedelta(days=7)
+    earliest_time = int(week_ago.timestamp())
+    latest_time = int(week_ahead.timestamp())
+    url = f"https://www.tadpoles.com/remote/v1/events?direction=range&earliest_event_time={earliest_time}&latest_event_time={latest_time}&num_events=300&client=dashboard.com/parents"
 
     logger.debug(f"Perform GET request. URL: {url}")
     r = requests.get(url, cookies=cookies)
@@ -212,7 +219,7 @@ def main():
     tracker = BabyTracker()
     tracker_events = tracker.get_last_transactions_decoded()
 
-    print("tracker_events count: {}".format(len(tracker_events)))
+    logger.info("tracker_events count: {}".format(len(tracker_events)))
 
     # compare babytracker/tadpole and remove transactions that already exist
     logger.info("Comparing transactions from Tadpole and events from BabyTracker")
