@@ -61,7 +61,8 @@ def parse_event_entry(entry, actor, start_time):
         elif "Dry" in classification:
             diaper_type = "dry"
         else:
-            raise Exception(f"Unsupported diaper type: {classification}")
+            logger.error(f"Unsupported diaper type: {classification}")
+            return False
 
         t["diaper_type"] = diaper_type
 
