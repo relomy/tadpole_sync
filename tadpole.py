@@ -211,7 +211,8 @@ def main():
     event = get_largest_event(events, my_date)
 
     if not event:
-        raise Exception("Event is empty.")
+        logger.error("Event is empty.")
+        exit()
 
     logger.info(f"Getting transactions for event (date: {event['event_date']})")
     transactions = get_transactions(event)
