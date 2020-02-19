@@ -119,7 +119,9 @@ def get_transactions(event):
             if "start_time" in entry:
                 start_time = get_utc_date_string(entry["start_time"])
             else:
-                raise Exception("No start_time found in entry")
+                logger.warning("No start_time found in entry: %s", entry)
+                continue
+                # raise Exception("No start_time found in entry")
 
             logger.info(f"Found a {entry['type']} event @ {start_time}")
 
